@@ -2,10 +2,10 @@
 
 **One channel connection. Unlimited projects. Every workspace runs in its own isolated session.**
 
-Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** layer on top of [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Send a message from Slack or Telegram — the orchestrator routes to the right projects, plans dependency-aware phases, and delegates each task to a **fresh, isolated Claude session** scoped to that workspace's `.claude/` context. Add as many projects and workspaces as you want: one channel connection scales to any tree depth.
+Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** layer on top of [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Send a message from Slack, Telegram, or Microsoft Teams — the orchestrator routes to the right projects, plans dependency-aware phases, and delegates each task to a **fresh, isolated Claude session** scoped to that workspace's `.claude/` context. Add as many projects and workspaces as you want: one channel connection scales to any tree depth.
 
 ```
- Slack / Telegram
+ Slack / Telegram / Teams
           │
     ┌─────▼─────┐
     │  Channel   │  (receive message, confirm gate)
@@ -68,7 +68,7 @@ Claude Code [recently introduced Channels](https://docs.anthropic.com/en/docs/cl
 | **Workspace orchestration** | None — flat message bridge | Phase-based dependency analysis, parallel execution, upstream context passing |
 | **Session isolation** | Shared session for everything | Each workspace gets its own fresh Claude session + `.claude/` context |
 | **Scalability** | Single project, single session | Unlimited projects & workspaces; tree grows without reconfiguration |
-| **Supported channels** | Telegram, Discord (preview) | **Slack, Telegram** |
+| **Supported channels** | Telegram, Discord (preview) | **Slack, Telegram, Teams** |
 | **ConfirmGate** | None | Built-in: user must confirm before execution starts |
 | **Task logging** | None | `.tasks/` auto-logging with 30-day retention |
 | **Remote workspaces** | Not possible | SSH/kubectl listener for external machines and K8s pods |
@@ -97,7 +97,7 @@ Two properties make this scale:
 
 ```mermaid
 flowchart TB
-    MSG["💬 User message via Slack / Telegram"]
+    MSG["💬 User message via Slack / Telegram / Teams"]
     MSG --> CONFIRM["🔒 ConfirmGate<br/><i>User confirms before execution</i>"]
     CONFIRM --> ROUTER["🔍 Router · Sonnet<br/><i>Identify target project(s)</i>"]
     ROUTER --> PO["🧠 Project Orchestrator · Opus<br/><i>Analyze dependencies → build phased plan</i>"]
@@ -337,7 +337,7 @@ The `/setup-orchestrator` command will interactively:
 1. Ask for your project root path
 2. Copy the orchestrator code
 3. Discover your workspaces
-4. Connect your preferred channel (Slack/Telegram)
+4. Connect your preferred channel (Slack/Telegram/Teams)
 5. Test the connection
 
 ---
@@ -349,6 +349,7 @@ The `/setup-orchestrator` command will interactively:
 | `/setup-orchestrator` | Full installation wizard — copies code, discovers workspaces, connects channels |
 | `/connect-slack` | Add Slack channel to an existing orchestrator |
 | `/connect-telegram` | Add Telegram channel to an existing orchestrator |
+| `/connect-teams` | Add Microsoft Teams channel to an existing orchestrator |
 | `/setup-remote-project` | Deploy listener on a remote host (SSH/kubectl) for remote project access |
 | `/setup-remote-workspace` | Connect a specific remote workspace to the orchestrator |
 
@@ -375,7 +376,8 @@ your-projects/
 │   │   ├── base.py              # Abstract channel + session state machine
 │   │   ├── session.py           # Per-source conversation tracking
 │   │   ├── slack.py             # Slack Socket Mode + Web API
-│   │   └── telegram.py          # Telegram long-polling + Bot API
+│   │   ├── telegram.py          # Telegram long-polling + Bot API
+│   │   └── teams.py             # Microsoft Teams Bot Framework webhook
 │   └── remote/
 │       ├── listener.py          # HTTP listener for remote workspaces
 │       └── deploy.py            # SSH/kubectl deployment helpers
@@ -423,7 +425,7 @@ your-projects/
 
 ### Execution Flow
 
-1. **Message arrives** via channel adapter (Slack/Telegram)
+1. **Message arrives** via channel adapter (Slack/Telegram/Teams)
 2. **ConfirmGate** registers request, asks user to confirm
 3. **Router** (Sonnet) identifies target project(s)
 4. **PO** (Opus) reads project structure, creates execution plan with phases
@@ -503,6 +505,17 @@ remote_workspaces:
 3. Copy the bot token
 4. Run `/connect-telegram` and enter the token
 
+### Microsoft Teams
+
+1. Go to [Azure Portal](https://portal.azure.com) → Create a resource → "Azure Bot"
+2. Configure: Bot handle, Subscription, Resource Group, Pricing (F0 free)
+3. Type of App: Multi Tenant (or Single Tenant for your org)
+4. After creation → Settings → Configuration → set Messaging endpoint to `https://YOUR-PUBLIC-HOST:3978/api/messages`
+5. Manage Password → New client secret → copy the Value (app_password) and Application ID (app_id)
+6. Channels → Microsoft Teams → Save
+7. In Teams → Apps → search for your bot → Add to a team
+8. Run `/connect-teams` and enter credentials
+
 ---
 
 ## Configuration Reference
@@ -522,6 +535,9 @@ channels:
     enabled: false
   telegram:
     enabled: false
+  teams:
+    enabled: false
+    port: 3978
 
 # Remote workspaces
 remote_workspaces:
@@ -549,6 +565,12 @@ bot_token : xoxb-xxx
 # ARCHIVE/telegram/credentials
 bot_token : 123456:ABC-DEF1234
 allowed_users : username1, username2
+
+# ARCHIVE/teams/credentials
+app_id : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+app_password : your-client-secret-value
+app_type : MultiTenant
+allowed_users : User One, User Two
 ```
 
 ---
@@ -612,6 +634,7 @@ Each workspace's `CLAUDE.md` controls how the executor agent behaves. Add build 
 | `aiohttp` | Always | HTTP server/client |
 | `pyyaml` | Always | Config loading |
 | `slack-bolt` + `slack-sdk` | If Slack | Socket Mode |
+| `botbuilder-integration-aiohttp` | If Teams | Bot Framework webhook |
 
 Telegram uses `aiohttp` (already required).
 
