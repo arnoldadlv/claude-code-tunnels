@@ -41,11 +41,11 @@ def load_credentials(path: Path | None = None) -> dict[str, str]:
 class _BotFrameworkConfig:
     """Config object that ConfigurationBotFrameworkAuthentication reads from."""
 
-    def __init__(self, app_id: str, app_password: str, app_type: str = "MultiTenant"):
+    def __init__(self, app_id: str, app_password: str, app_type: str = "MultiTenant", tenant_id: str = ""):
         self.APP_ID = app_id
         self.APP_PASSWORD = app_password
         self.APP_TYPE = app_type
-        self.APP_TENANTID = ""
+        self.APP_TENANTID = tenant_id
 
 
 class TeamsChannel(BaseChannel):
@@ -68,6 +68,7 @@ class TeamsChannel(BaseChannel):
             app_id=creds["app_id"],
             app_password=creds["app_password"],
             app_type=creds.get("app_type", "MultiTenant"),
+            tenant_id=creds.get("app_tenant_id", ""),
         )
         self._adapter = CloudAdapter(ConfigurationBotFrameworkAuthentication(config))
         self._adapter.on_turn_error = self._on_turn_error
