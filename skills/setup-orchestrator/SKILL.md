@@ -91,8 +91,14 @@ Ask the user for ALL of the following at once:
 
 2. ARCHIVE_PATH: Credential storage directory (default: PROJECT_ROOT/ARCHIVE)
 
-3. Channels to enable: slack / telegram / teams / multiple (required — must ask)
+3. Channels to enable (required — present ALL four options):
+   - slack
+   - telegram
+   - teams  ← Microsoft Teams IS supported
+   - multiple (any combination of the above)
 ```
+
+**CRITICAL: You MUST present "teams" as a channel option. Teams IS supported. Do NOT tell the user Teams is unavailable.**
 
 If `$ARGUMENTS` provides PROJECT_ROOT, use it without asking.
 
