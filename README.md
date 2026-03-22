@@ -69,7 +69,7 @@ Claude Code [recently introduced Channels](https://docs.anthropic.com/en/docs/cl
 | **Session isolation** | Shared session for everything | Each workspace gets its own fresh Claude session + `.claude/` context |
 | **Scalability** | Single project, single session | Unlimited projects & workspaces; tree grows without reconfiguration |
 | **Supported channels** | Telegram, Discord (preview) | **Slack, Telegram, Teams** |
-| **ConfirmGate** | None | Built-in: user must confirm before execution starts |
+| **ConfirmGate** | None | Built-in: auto-executes with session tracking and follow-up flow |
 | **Task logging** | None | `.tasks/` auto-logging with 30-day retention |
 | **Remote workspaces** | Not possible | SSH/kubectl listener for external machines and K8s pods |
 | **Conversation memory** | Single session context | Per-source session with turn history and state machine |
@@ -98,7 +98,7 @@ Two properties make this scale:
 ```mermaid
 flowchart TB
     MSG["💬 User message via Slack / Telegram / Teams"]
-    MSG --> CONFIRM["🔒 ConfirmGate<br/><i>User confirms before execution</i>"]
+    MSG --> CONFIRM["🔒 ConfirmGate<br/><i>Auto-execute with session tracking</i>"]
     CONFIRM --> ROUTER["🔍 Router · Sonnet<br/><i>Identify target project(s)</i>"]
     ROUTER --> PO["🧠 Project Orchestrator · Opus<br/><i>Analyze dependencies → build phased plan</i>"]
 
@@ -324,13 +324,17 @@ Each phase strictly depends on the previous one. The PO ensures that no workspac
 
 ## Quick Start
 
-```
-# 1. Install the plugin
-/plugin install claude-tunnels@claude-tunnels
+```bash
+# 1. Add the marketplace
+claude plugin marketplace add arnoldadlv/claude-code-tunnels
 
-# 2. Go to your project directory and run the setup wizard
+# 2. Install the plugin
+claude plugin install claude-tunnels
+
+# 3. Open a new Claude Code session in your project directory and run the setup wizard
 cd /path/to/your/projects
-/setup-orchestrator
+claude
+# then type: /setup-orchestrator
 ```
 
 The `/setup-orchestrator` command will interactively:
@@ -409,12 +413,7 @@ your-projects/
 ```
 [User sends message]
     │
-[IDLE] → create_request() → send confirm message
-    │
-[PENDING_CONFIRM] ← user sends "yes" or "cancel"
-    ├── "yes"    → confirm() → handle_request()
-    ├── "cancel" → cancel request → IDLE
-    └── other    → treat as new request
+[IDLE] → create_request() → auto-execute immediately
     │
 [EXECUTING] ← handle_request() processing
     │
@@ -426,7 +425,7 @@ your-projects/
 ### Execution Flow
 
 1. **Message arrives** via channel adapter (Slack/Telegram/Teams)
-2. **ConfirmGate** registers request, asks user to confirm
+2. **ConfirmGate** registers request, auto-executes immediately
 3. **Router** (Sonnet) identifies target project(s)
 4. **PO** (Opus) reads project structure, creates execution plan with phases
 5. **Executor** runs workspaces — parallel within phase, sequential between phases
