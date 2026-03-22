@@ -42,7 +42,7 @@ Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** lay
 
 Claude Code [recently introduced Channels](https://docs.anthropic.com/en/docs/claude-code/channels) (research preview) — a way to push messages from Telegram/Discord into a running CLI session. Here's why Claude-Code-Tunnels is fundamentally different:
 
-| Feature | Claude Code Channels | Claude-Code-Tunnels |
+| Feature | Claude Code Channels | Claude Code Tunnels |
 |---------|---------------------|---------------------|
 | **Architecture** | Single CLI session, single cwd | Always-on server with multi-project orchestration |
 | **Session model** | Session-bound (stops when CLI closes) | Background daemon (survives disconnects) |
