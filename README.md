@@ -1,8 +1,8 @@
 # Claude-Code-Tunnels
 
-**Turn any folder of projects into an AI-orchestrated workspace with Slack and Telegram integration.**
+**One channel connection. Unlimited projects. Every workspace runs in its own isolated session.**
 
-Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** layer on top of [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Send a message from Slack or Telegram — the orchestrator analyzes your request, identifies the right project and workspaces, creates an execution plan with dependency-aware phases, delegates work to workspace-level Claude agents, and returns structured results.
+Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** layer on top of [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Send a message from Slack or Telegram — the orchestrator routes to the right projects, plans dependency-aware phases, and delegates each task to a **fresh, isolated Claude session** scoped to that workspace's `.claude/` context. Add as many projects and workspaces as you want: one channel connection scales to any tree depth.
 
 ```
  Slack / Telegram
@@ -17,15 +17,33 @@ Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** lay
     └─────┬─────┘
           │
     ┌─────▼─────┐
-    │     PO     │  (analyze request → execution plan with phases)
+    │     PO     │  (read CLAUDE.md → build execution plan with phases)
     └─────┬─────┘
           │
-    ┌─────▼─────┐
-    │  Executor  │  (run workspaces in parallel/sequential phases)
-    │            │
-    │  Phase 1:  │──→ [ws-a] [ws-b]  (parallel)
-    │  Phase 2:  │──→ [ws-c]         (depends on phase 1)
-    └─────┬─────┘
+    ┌─────▼──────────────────────────────────────────────────────────┐
+    │  Executor                                                       │
+    │                                                                 │
+    │  Phase 1 (parallel):                                            │
+    │    ┌──────────────────┐    ┌──────────────────┐                │
+    │    │  Claude session  │    │  Claude session  │                │
+    │    │  cwd: ws-a/      │    │  cwd: ws-b/      │                │
+    │    │  ┌─────────────┐ │    │  ┌─────────────┐ │                │
+    │    │  │ ws-a/.claude│ │    │  │ ws-b/.claude│ │  ← injected   │
+    │    │  │  (memory,   │ │    │  │  (memory,   │ │    per session │
+    │    │  │   rules,    │ │    │  │   rules,    │ │                │
+    │    │  │   skills)   │ │    │  │   skills)   │ │                │
+    │    │  └─────────────┘ │    │  └─────────────┘ │                │
+    │    └──────────────────┘    └──────────────────┘                │
+    │                                                                 │
+    │  Phase 2 (after phase 1 completes, with upstream context):      │
+    │    ┌──────────────────┐                                         │
+    │    │  Claude session  │                                         │
+    │    │  cwd: ws-c/      │                                         │
+    │    │  ┌─────────────┐ │                                         │
+    │    │  │ ws-c/.claude│ │  ← injected per session                │
+    │    │  └─────────────┘ │                                         │
+    │    └──────────────────┘                                         │
+    └─────┬───────────────────────────────────────────────────────────┘
           │
     ┌─────▼─────┐
     │ Task Log   │  (.tasks/ with 30-day retention)
@@ -48,7 +66,9 @@ Claude Code [recently introduced Channels](https://docs.anthropic.com/en/docs/cl
 | **Session model** | Session-bound (stops when CLI closes) | Background daemon (survives disconnects) |
 | **Multi-project** | One session = one project | PO routes to any project, runs multiple in parallel |
 | **Workspace orchestration** | None — flat message bridge | Phase-based dependency analysis, parallel execution, upstream context passing |
-| **Supported channels** | Telegram, Discord (preview) ... | Telegram, Discord Slack, ...  |
+| **Session isolation** | Shared session for everything | Each workspace gets its own fresh Claude session + `.claude/` context |
+| **Scalability** | Single project, single session | Unlimited projects & workspaces; tree grows without reconfiguration |
+| **Supported channels** | Telegram, Discord (preview) | **Slack, Telegram** |
 | **ConfirmGate** | None | Built-in: user must confirm before execution starts |
 | **Task logging** | None | `.tasks/` auto-logging with 30-day retention |
 | **Remote workspaces** | Not possible | SSH/kubectl listener for external machines and K8s pods |
@@ -59,13 +79,19 @@ Claude Code [recently introduced Channels](https://docs.anthropic.com/en/docs/cl
 | **Enterprise** | Needs org-level `channelsEnabled` toggle | Self-hosted, no org restrictions |
 | **Permission model** | Interactive prompts block execution | `bypassPermissions` for unattended operation |
 
-**In short**: Claude Code Channels is a raw message bridge into a single session. Claude-Code-Tunnels is a full orchestration layer that manages multiple projects, plans execution, handles dependencies, and logs everything.
+**In short**: Claude Code Channels is a raw message bridge into a single session. Claude-Code-Tunnels is a full orchestration layer — each workspace runs in its own isolated session, and one channel connection scales to any number of projects.
 
 ---
 
 ## How Delegation Works
 
 The core value of Claude-Code-Tunnels is **delegation** — even with dozens of projects and workspaces, the PO analyzes a single natural-language request, identifies the right targets, builds a dependency-aware execution plan, and delegates each piece to the appropriate workspace agent. You never have to specify which project or workspace to touch.
+
+Two properties make this scale:
+
+**1. Isolated sessions per workspace.** Every delegation spawns a *fresh* Claude session with `cwd=workspace/` and loads only that workspace's `.claude/` settings and memory. Each agent works with full focus on exactly one workspace — no context bleed between workspaces, no shared state.
+
+**2. Unbounded tree depth.** One channel connection is all you need. Add more projects, add more workspaces inside them, add remote workspaces on other machines — the tree can grow arbitrarily deep. The PO discovers structure at runtime by reading `CLAUDE.md` files, so there's nothing to reconfigure as the tree grows.
 
 ### Delegation Flow
 
