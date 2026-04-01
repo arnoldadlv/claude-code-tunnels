@@ -1,4 +1,4 @@
-"""Channel adapters: Slack, Telegram, with shared base and session management."""
+"""Channel adapters: Slack, Telegram, Teams, with shared base and session management."""
 
 from orchestrator.channel.base import (
     BaseChannel,

@@ -215,7 +215,8 @@ Multiple selections allowed — separate numbers with commas (e.g. 1,3)
 
   [1] slack      — Slack Socket Mode (no public IP required)
   [2] telegram   — Telegram Bot long polling (no public IP required)
-  [3] Configure later (skip)
+  [3] teams      — Microsoft Teams Bot Framework webhook (requires public URL or tunnel)
+  [4] Configure later (skip)
 
 Number:
 ```
@@ -270,6 +271,9 @@ channels:
     enabled: true/false
   telegram:
     enabled: true/false
+  teams:
+    enabled: true/false
+    port: 3978
 remote_workspaces: []
 ```
 
@@ -312,14 +316,16 @@ Workspaces without a CLAUDE.md will be informed that a default one will be creat
 Run the corresponding channel skill in sequence based on the selected channels:
 - Slack → `/claude-code-tunnels:connect-slack`
 - Telegram → `/claude-code-tunnels:connect-telegram`
+- Teams → `/claude-code-tunnels:connect-teams`
 
 Dependency installation (show list to user and confirm):
 ```
 Packages to install:
-  Base:  claude-agent-sdk aiohttp pyyaml
-  Slack: slack-bolt slack-sdk
+  Base:   claude-agent-sdk aiohttp pyyaml
+  Slack:  slack-bolt slack-sdk
+  Teams:  botbuilder-integration-aiohttp
 
-Command: $PIP_CMD install claude-agent-sdk aiohttp pyyaml slack-bolt slack-sdk
+Command: $PIP_CMD install claude-agent-sdk aiohttp pyyaml slack-bolt slack-sdk botbuilder-integration-aiohttp
 
   [1] Install now
   [2] Skip (install manually)

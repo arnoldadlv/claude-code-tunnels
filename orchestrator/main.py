@@ -3,6 +3,7 @@
 Channels:
   - Slack: Socket Mode (async, no port)
   - Telegram: Long polling
+  - Teams: Bot Framework webhook (aiohttp on configurable port)
 """
 
 import asyncio
@@ -48,6 +49,17 @@ async def main() -> None:
         register_channel("telegram", tg_ch)
         tasks.append(asyncio.create_task(tg_ch.start()))
         logger.info("  Telegram: Long Polling")
+
+    # --- Teams ---
+    teams_cfg = channels_config.get("teams", {})
+    if teams_cfg.get("enabled"):
+        from orchestrator.channel.teams import TeamsChannel
+
+        port = teams_cfg.get("port", 3978)
+        teams_ch = TeamsChannel(confirm_gate, port=port)
+        register_channel("teams", teams_ch)
+        tasks.append(asyncio.create_task(teams_ch.start()))
+        logger.info("  Teams: Bot Framework webhook on port %d", port)
 
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
