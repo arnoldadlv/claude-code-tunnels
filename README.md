@@ -5,10 +5,11 @@
 [![Claude Code](https://img.shields.io/badge/Claude_Code-CLI-blueviolet.svg)](https://docs.anthropic.com/en/docs/claude-code)
 [![Slack](https://img.shields.io/badge/Channel-Slack-4A154B.svg?logo=slack)](https://api.slack.com/apps)
 [![Telegram](https://img.shields.io/badge/Channel-Telegram-26A5E4.svg?logo=telegram)](https://core.telegram.org/bots)
+[![Teams](https://img.shields.io/badge/Channel-Teams-6264A7.svg?logo=microsoftteams)](https://dev.teams.microsoft.com/)
 
 **One channel connection. Unlimited projects. Every workspace runs in its own isolated session.**
 
-Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** layer on top of [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Send a message from Slack or Telegram — the orchestrator routes to the right projects, plans dependency-aware phases, and delegates each task to a **fresh, isolated Claude session** scoped to that workspace's `.claude/` context. Add as many projects and workspaces as you want: one channel connection scales to any tree depth.
+Claude-Code-Tunnels is a plugin that creates a **Project Orchestrator (PO)** layer on top of [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Send a message from Slack, Telegram, or Microsoft Teams — the orchestrator routes to the right projects, plans dependency-aware phases, and delegates each task to a **fresh, isolated Claude session** scoped to that workspace's `.claude/` context. Add as many projects and workspaces as you want: one channel connection scales to any tree depth.
 
 If you want the **multi-code-agent version** (codex, claude, opencode, cursor), see [agent-fabric](https://github.com/matteblack9/agent-fabric).
 
@@ -101,7 +102,7 @@ graph LR
 
 ```mermaid
 flowchart TB
-    INPUT["💬 Slack / Telegram"]
+    INPUT["💬 Slack / Telegram / Teams"]
     ADAPTER["Channel Adapter<br/><small>receive message, confirm gate</small>"]
     ROUTER["Router<br/><small>identify target project</small>"]
     PO["PO<br/><small>read CLAUDE.md → build execution plan with phases</small>"]
@@ -162,7 +163,7 @@ Claude Code [recently introduced Channels](https://docs.anthropic.com/en/docs/cl
 | **Workspace orchestration** | None — flat message bridge | Phase-based dependency analysis, parallel execution, upstream context passing |
 | **Session isolation** | Shared session for everything | Each workspace gets its own fresh Claude session + `.claude/` context |
 | **Scalability** | Single project, single session | Unlimited projects & workspaces; tree grows without reconfiguration |
-| **Supported channels** | Telegram, Discord (preview) | **Slack, Telegram** |
+| **Supported channels** | Telegram, Discord (preview) | **Slack, Telegram, Teams** |
 | **ConfirmGate** | None | Built-in: user must confirm before execution starts |
 | **Task logging** | None | `.tasks/` auto-logging with 30-day retention |
 | **Remote workspaces** | Not possible | SSH/kubectl listener for external machines and K8s pods |
@@ -249,7 +250,7 @@ sequenceDiagram
     participant WS as Workspaces
     participant LOG as Task Log
 
-    User->>CH: 💬 message via Slack / Telegram
+    User->>CH: 💬 message via Slack / Telegram / Teams
     CH->>CG: register request
     CG-->>User: "Confirm execution? (yes/cancel)"
     User->>CG: yes
@@ -498,7 +499,7 @@ The `/setup-orchestrator` command will interactively:
 1. Ask for your project root path
 2. Copy the orchestrator code
 3. Discover your workspaces
-4. Connect your preferred channel (Slack/Telegram)
+4. Connect your preferred channel (Slack/Telegram/Teams)
 5. Test the connection
 
 ---
@@ -510,6 +511,7 @@ The `/setup-orchestrator` command will interactively:
 | `/setup-orchestrator` | Full installation wizard — copies code, discovers workspaces, connects channels |
 | `/connect-slack` | Add Slack channel to an existing orchestrator |
 | `/connect-telegram` | Add Telegram channel to an existing orchestrator |
+| `/connect-teams` | Add Microsoft Teams channel to an existing orchestrator |
 | `/setup-remote-project` | Deploy listener on a remote host (SSH/kubectl) for remote project access |
 | `/setup-remote-workspace` | Connect a specific remote workspace to the orchestrator |
 
@@ -536,7 +538,8 @@ your-projects/
 │   │   ├── base.py              # Abstract channel + session state machine
 │   │   ├── session.py           # Per-source conversation tracking
 │   │   ├── slack.py             # Slack Socket Mode + Web API
-│   │   └── telegram.py          # Telegram long-polling + Bot API
+│   │   ├── telegram.py          # Telegram long-polling + Bot API
+│   │   └── teams.py             # Teams Bot Framework webhook
 │   └── remote/
 │       ├── listener.py          # HTTP listener for remote workspaces
 │       └── deploy.py            # SSH/kubectl deployment helpers
@@ -584,7 +587,7 @@ your-projects/
 
 ### Execution Flow
 
-1. **Message arrives** via channel adapter (Slack/Telegram)
+1. **Message arrives** via channel adapter (Slack/Telegram/Teams)
 2. **ConfirmGate** registers request, asks user to confirm
 3. **Router** (Sonnet) identifies target project(s)
 4. **PO** (Opus) reads project structure, creates execution plan with phases
